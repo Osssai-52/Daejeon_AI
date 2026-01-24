@@ -68,4 +68,4 @@ def search_similar_place(image_filename):
 if __name__ == "__main__":
     # ★ 테스트하고 싶은 사진 이름을 여기에 적으세요!
     # 예: images 폴더 안에 있는 '성심당.jpeg'로 테스트
-    search_similar_place("02expo3.jpeg")
+    search_similar_place("07gyejoksan1.jpg")

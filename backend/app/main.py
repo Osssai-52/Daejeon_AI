@@ -1,4 +1,5 @@
-# backend/app/main.py
+import os
+from dotenv import load_dotenv  
 from fastapi import FastAPI, UploadFile, File
 from app.services.ai_service import ai_instance
 from app.db.models import Place
@@ -6,10 +7,16 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 import uvicorn
 
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    print("❌ 에러: .env 파일을 못 찾거나 DATABASE_URL이 없어!")
+
 app = FastAPI()
 
-DATABASE_URL = "postgresql://postgres.lejcuodzqwfhsnbtkbco:HAKSIKMUKJA260116@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
-
+# DB 연결
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 
@@ -28,28 +35,28 @@ async def analyze_image(file: UploadFile = File(...)):
 
     db = SessionLocal()
     try:
+        # 유사도 거리 계산
         distance_col = Place.embedding.cosine_distance(user_vector).label("distance")
         
-        # 상위 5개까지 가져오기
+        # 상위 5개까지 가져오기 (비슷한 순서대로)
         stmt = select(Place, distance_col).order_by(distance_col).limit(5)
         results = db.execute(stmt).all() 
 
         if not results:
-            return {"status": "error", "message": "DB에 데이터가 없어"}
+            return {"status": "error", "message": "DB에 데이터가 없음"}
 
-        # 결과를 리스트에 담기
         recommendations = []
         
         for row in results:
             place, distance = row
             
-            # 커트라인 체크 (0.45 안쪽인 애들만)
+            # 커트라인 체크 (0.45 안쪽인 애들만 추천)
             if distance < 0.45:
                 recommendations.append({
                     "name": place.name,
                     "description": place.description,
-                    "address": place.address,
-                    "distance": float(distance) # 이건 '유사도' 거리임 (0에 가까울수록 비슷)
+                    "address": place.address,   # ★ 주소 정보도 같이 보냄!
+                    "distance": float(distance) # 유사도 (0에 가까울수록 똑같음)
                 })
 
         # 결과가 하나라도 있으면 성공!

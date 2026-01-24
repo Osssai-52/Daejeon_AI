@@ -1,5 +1,6 @@
 import os
 import sys
+from dotenv import load_dotenv
 
 sys.path.append(os.getcwd())
 
@@ -8,7 +9,13 @@ from sqlalchemy.orm import sessionmaker
 from app.db.models import Base, Place
 from app.services.ai_service import ai_instance
 
-DATABASE_URL = "여기에 url 추가"
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    print("❌ 에러: .env 파일을 못 찾거나, 안에 DATABASE_URL이 없어!")
+    sys.exit(1)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
@@ -71,141 +78,155 @@ def seed_places():
             "name": "성심당 롯데백화점 대전점",
             "addr": "대전 서구 계룡로 598 1층",
             "contents": [
-                {"img": "01sungsim1.jpeg", "desc": "튀김소보로와 명란바게트의 성지! 대전 필수 코스"},
-                {"img": "01sungsim2.jpg",  "desc": "딸기시루 & 망고시루가 유명한 디저트 천국"},
-                {"img": "01sungsim3.jpeg", "desc": "튀김소보로도 유명한 빵집"},
-                {"img": "01sungsim4.jpeg", "desc": "보문산메아리와 명란바게트가 유명한 빵집"},
-                {"img": "01sungsim5.jpg",  "desc": "성심당"},
+                {"img": "01sungsim1.jpeg", "desc": "마치 유럽 거리에 온 듯한 붉은 벽돌 건물! 🧱 성심당 케익부띠끄 앞에서 인생샷 찰칵 📸"},
+                {"img": "01sungsim2.jpg",  "desc": "비주얼 쇼크! 딸기가 산처럼 쌓인 전설의 딸기시루 케이크 🍓 (기념일 필수템)"},
+                {"img": "01sungsim3.jpeg", "desc": "입안에서 사르르 녹는 생망고 폭탄! 🍋 웨이팅해서라도 먹어야 하는 망고시루"},
+                {"img": "01sungsim4.jpeg", "desc": "겉바속촉의 정석! 고소한 버터 풍미와 짭짤함이 터지는 성심당 명물 소금빵 🥐"},
+                {"img": "01sungsim5.jpg",  "desc": "대전의 자존심! 바삭바삭한 식감이 일품인 전설의 튀김소보로 (우유랑 먹으면 극락!) 🍩"},
             ]
         },
 
         # 2. 엑스포 & 야경 맛집
         {
-            "name": "엑스포 과학공원",
-            "desc": "한빛탑과 꿈돌이가 반겨주는 대전의 랜드마크",
-            "img": "01expo1.png",
-            "addr": "대전 유성구 대덕대로 480"
+            "name": "대전 엑스포 과학공원",
+            "addr": "대전 유성구 대덕대로 480",
+            "contents": [
+                {"img": "02expo1.png", "desc": "대전의 상징 한빛탑! 파란 하늘 아래 우뚝 솟은 미래 도시 느낌의 랜드마크 🚀"},
+                {"img": "02expo2.jpeg", "desc": "대전 야경 원탑! 빨강 파랑 아치가 빛나는 엑스포 다리 (견우직녀교) 🌉 데이트 코스로 강추!"},
+                {"img": "02expo7.jpeg", "desc": "밤에 더 핫한 한빛탑 물빛광장! 반짝이는 조명과 시원한 음악분수가 있는 힐링 스팟 ✨"},
+                {"img": "02expo8.jpeg", "desc": "꿈돌이와 꿈순이가 반겨주는 엑스포 광장! 알록달록 꽃밭과 거대한 조형물이 있는 산책 명소 🌷"},
+            ]
         },
         {
-            "name": "엑스포 다리",
-            "desc": "야경이 예쁜 견우직녀 다리 (데이트 코스 강추)",
-            "img": "01expo2.jpeg",
-            "addr": "대전 유성구 도룡동"
-        },
-        {
-            "name": "엑스포 아쿠아리움",
-            "desc": "야경이 예쁜 견우직녀 다리 (데이트 코스 강추)",
-            "img": "01expo3.jpeg",
-            "addr": "대전 유성구 도룡동"
+            "name": "대전 엑스포 아쿠아리움",
+            "addr": "대전 유성구 엑스포로 1 대전신세계 아트앤사이언스 지하1층",
+            "contents": [
+                {"img": "02expo3.jpeg", "desc": "인생샷 보장! 머리 위로 물고기가 지나가는 몽환적인 해저 터널 📸"},
+                {"img": "02expo4.jpeg", "desc": "신비로운 바닷속 세상! 파란 물멍 때리기 좋은 도심 속 힐링 스팟 🐋"},
+                {"img": "02expo5.jpeg", "desc": "눈을 뗄 수 없는 수중 발레 공연과 마술쇼가 있는 곳 ✨"},
+                {"img": "02expo6.jpeg", "desc": "상어랑 아이컨택 가능! 아이들도 좋아하는 스릴 만점 수중 탐험 🦈"},
+            ]
         },
         {
             "name": "신세계 아트앤사이언스",
-            "desc": "대전 쇼핑과 문화의 중심, 아쿠아리움과 전망대까지!",
-            "img": "shinsegae_dept.jpg",
-            "addr": "대전 유성구 엑스포로 1"
+            "addr": "대전 유성구 엑스포로 1",
+            "contents": [
+                {"img": "03shinsegae1.jpeg", "desc": "럭셔리한 분위기 끝판왕! 맛집 탐방과 쇼핑을 한 번에 해결하는 실내 데이트 필수 코스 🛍️"},
+                {"img": "03shinsegae2.jpeg", "desc": "대전의 새로운 랜드마크! 쇼핑과 예술, 과학이 만난 복합 문화 공간의 웅장한 외관 🏢"},
+                {"img": "03shinsegae3.jpeg", "desc": "갑천이 한눈에 내려다보이는 탁 트인 뷰! 노을 질 때 가장 예쁜 하늘공원 & 전망대 🌅"},
+            ]
         },
         {
             "name": "식장산 전망대",
-            "desc": "대전 시내 야경이 한눈에 보이는 드라이브 코스",
-            "img": "sikjang_mountain.jpg",
-            "addr": "대전 동구 낭월동 산2-1"
+            "addr": "대전 동구 세천공원로 32-836",
+            "contents": [
+                {"img": "04sikjang1.jpeg", "desc": "보석을 뿌려놓은 듯한 황홀한 도시 야경 🌃 대전 시내가 한눈에 들어오는 최고의 드라이브 코스"},
+                {"img": "04sikjang2.jpeg", "desc": "탁 트인 하늘과 멋진 한옥 정자(식장루) 🏯 가슴이 뻥 뚫리는 시원한 마운틴 뷰와 고즈넉한 분위기"},
+            ]
         },
 
-        # --- 🌳 [3. 힐링 & 자연] ---
+        # 3. 힐링 & 자연
         {
             "name": "한밭수목원",
-            "desc": "도심 속 거대한 힐링 숲, 피크닉 명소",
-            "img": "hanbat_arboretum.jpg",
-            "addr": "대전 서구 둔산대로 169"
+            "addr": "대전 서구 둔산대로 169",
+            "contents": [
+                {"img": "05hanbat_arboretum1.jpeg", "desc": "도심 속 힐링 타임! 🌿 시원한 분수와 정자가 있는 평화로운 호수 풍경 (피크닉 매트 펴고 눕고 싶다)"},
+                {"img": "05hanbat_arboretum2.jpeg", "desc": "장미꽃이 만발한 로맨틱한 꽃 터널! 🌹 막 찍어도 인생샷 나오는 예쁜 정원 (꽃구경 데이트는 여기로)"},
+            ]
         },
         {
             "name": "장태산 자연휴양림",
-            "desc": "메타세콰이어 숲과 아찔한 스카이웨이",
-            "img": "jangtaesan.jpg",
-            "addr": "대전 서구 장안로 461"
-        },
-        {
-            "name": "계족산 황톳길",
-            "desc": "맨발로 걷는 붉은 황톳길 트레킹",
-            "img": "gyejoksan_redclay.jpg",
-            "addr": "대전 대덕구 장동 산91"
-        },
-        {
-            "name": "대청호반",
-            "desc": "탁 트인 호수 뷰와 분위기 좋은 카페들이 있는 곳",
-            "img": "daecheong_lake.jpg",
-            "addr": "대전 대덕구 대청로 618-136"
-        },
-        {
-            "name": "유성온천 족욕체험장",
-            "desc": "여행의 피로를 푸는 따끈따끈 야외 족욕탕",
-            "img": "yuseong_hotspring.jpg",
-            "addr": "대전 유성구 봉명동 574"
-        },
-        {
-            "name": "뿌리공원",
-            "desc": "나의 뿌리를 찾는 효 테마 공원 (야경도 예쁨)",
-            "img": "ppuri_park.jpg",
-            "addr": "대전 중구 뿌리공원로 79"
-        },
-        {
-            "name": "오월드",
-            "desc": "동물원과 플라워랜드, 사파리가 있는 테마파크",
-            "img": "oworld.jpg",
-            "addr": "대전 중구 사정공원로 70"
+            "addr": "대전 서구 장안로 461",
+            "contents": [
+                {"img": "06jangtaesan1.jpg", "desc": "빙글빙글 올라가는 재미가 있는 스카이타워! 🗼 꼭대기에서 내려다보는 숲 뷰가 진짜 가슴 뻥 뚫림 (고소공포증 주의)"},
+                {"img": "06jangtaesan2.jpg", "desc": "호수 위에 비친 붉은 메타세콰이어 숲이 한 폭의 그림 같은 곳! 🍂 바라만 봐도 힐링되는 가을 인생샷 명소"},
+                {"img": "06jangtaesan3.jpg", "desc": "나무 꼭대기를 걷는 기분! ☁️ 아찔하고 스릴 넘치는 출렁다리 스카이웨이 (여기서 사진 찍으면 무조건 인생샷)"},
+                {"img": "06jangtaesan4.jpg", "desc": "피톤치드 풀충전 완료! 🌿 초록초록한 메타세콰이어 숲길과 평화로운 연못 산책 (힐링이 필요할 땐 무조건 여기)"},
+            ]
         },
 
-        # --- ☕ [4. 힙플 & 문화] ---
-        {
-            "name": "소제동 카페거리",
-            "desc": "옛 관사촌을 개조한 감성 가득한 카페 골목",
-            "img": "soje_street.jpg",
-            "addr": "대전 동구 소제동"
-        },
-        {
-            "name": "으능정이 스카이로드",
-            "desc": "거대한 LED 천장이 있는 대전의 명동",
-            "img": "skyroad.jpg",
-            "addr": "대전 중구 중앙로164번길 21-13"
-        },
-        {
-            "name": "대전예술의전당",
-            "desc": "이응노 미술관과 함께 예술 감성 충전하는 곳",
-            "img": "art_center.jpg",
-            "addr": "대전 서구 둔산대로 135"
-        },
-        {
-            "name": "동춘당",
-            "desc": "고즈넉한 한옥의 멋을 느낄 수 있는 역사 공원",
-            "img": "dongchundang.jpg",
-            "addr": "대전 대덕구 동춘당로 80"
-        },
+        # {
+        #     "name": "계족산 황톳길",
+        #     "desc": "맨발로 걷는 붉은 황톳길 트레킹",
+        #     "img": "gyejoksan_redclay.jpg",
+        #     "addr": "대전 대덕구 장동 산91"
+        # },
+        # {
+        #     "name": "대청호반",
+        #     "desc": "탁 트인 호수 뷰와 분위기 좋은 카페들이 있는 곳",
+        #     "img": "daecheong_lake.jpg",
+        #     "addr": "대전 대덕구 대청로 618-136"
+        # },
+        # {
+        #     "name": "유성온천 족욕체험장",
+        #     "desc": "여행의 피로를 푸는 따끈따끈 야외 족욕탕",
+        #     "img": "yuseong_hotspring.jpg",
+        #     "addr": "대전 유성구 봉명동 574"
+        # },
+        # {
+        #     "name": "뿌리공원",
+        #     "desc": "나의 뿌리를 찾는 효 테마 공원 (야경도 예쁨)",
+        #     "img": "ppuri_park.jpg",
+        #     "addr": "대전 중구 뿌리공원로 79"
+        # },
+        # {
+        #     "name": "오월드",
+        #     "desc": "동물원과 플라워랜드, 사파리가 있는 테마파크",
+        #     "img": "oworld.jpg",
+        #     "addr": "대전 중구 사정공원로 70"
+        # },
 
-        # --- 🍜 [5. 대전의 맛] ---
-        {
-            "name": "오씨칼국수",
-            "desc": "물총조개가 산더미처럼 들어간 대전 명물 칼국수",
-            "img": "kalguksu.jpg",
-            "addr": "대전 동구 옛신탄진로 13"
-        },
-        {
-            "name": "광천식당",
-            "desc": "매콤한 양념이 중독적인 두부두루치기",
-            "img": "tofu_duruchigi.jpg",
-            "addr": "대전 중구 대종로505번길 29"
-        },
-        {
-            "name": "태평소국밥",
-            "desc": "육사시미와 국밥이 끝내주는 줄 서는 맛집",
-            "img": "beef_soup.jpg",
-            "addr": "대전 유성구 온천동로65번길 50"
-        },
-        {
-            "name": "중앙시장",
-            "desc": "대전의 정이 넘치는 전통시장 (스모키버거, 만두)",
-            "img": "central_market.jpg",
-            "addr": "대전 동구 대전로 783"
-        }
+        # # --- ☕ [4. 힙플 & 문화] ---
+        # {
+        #     "name": "소제동 카페거리",
+        #     "desc": "옛 관사촌을 개조한 감성 가득한 카페 골목",
+        #     "img": "soje_street.jpg",
+        #     "addr": "대전 동구 소제동"
+        # },
+        # {
+        #     "name": "으능정이 스카이로드",
+        #     "desc": "거대한 LED 천장이 있는 대전의 명동",
+        #     "img": "skyroad.jpg",
+        #     "addr": "대전 중구 중앙로164번길 21-13"
+        # },
+        # {
+        #     "name": "대전예술의전당",
+        #     "desc": "이응노 미술관과 함께 예술 감성 충전하는 곳",
+        #     "img": "art_center.jpg",
+        #     "addr": "대전 서구 둔산대로 135"
+        # },
+        # {
+        #     "name": "동춘당",
+        #     "desc": "고즈넉한 한옥의 멋을 느낄 수 있는 역사 공원",
+        #     "img": "dongchundang.jpg",
+        #     "addr": "대전 대덕구 동춘당로 80"
+        # },
+
+        # # --- 🍜 [5. 대전의 맛] ---
+        # {
+        #     "name": "오씨칼국수",
+        #     "desc": "물총조개가 산더미처럼 들어간 대전 명물 칼국수",
+        #     "img": "kalguksu.jpg",
+        #     "addr": "대전 동구 옛신탄진로 13"
+        # },
+        # {
+        #     "name": "광천식당",
+        #     "desc": "매콤한 양념이 중독적인 두부두루치기",
+        #     "img": "tofu_duruchigi.jpg",
+        #     "addr": "대전 중구 대종로505번길 29"
+        # },
+        # {
+        #     "name": "태평소국밥",
+        #     "desc": "육사시미와 국밥이 끝내주는 줄 서는 맛집",
+        #     "img": "beef_soup.jpg",
+        #     "addr": "대전 유성구 온천동로65번길 50"
+        # },
+        # {
+        #     "name": "중앙시장",
+        #     "desc": "대전의 정이 넘치는 전통시장 (스모키버거, 만두)",
+        #     "img": "central_market.jpg",
+        #     "addr": "대전 동구 대전로 783"
+        # }
     ]
 
     print(f"🚀 '{IMAGE_FOLDER}' 폴더 스캔 및 학습 시작...")
