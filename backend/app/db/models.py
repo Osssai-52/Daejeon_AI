@@ -13,8 +13,10 @@ class Place(Base):
     description = Column(Text)              # 설명
     image_path = Column(String)             # 이미지 파일 위치
     
-    address = Column(String)
-    # ★ CLIP이 분석한 512개의 숫자를 저장하는 칸
+    address = Column(String)       # 주소
+    latitude = Column(Float)       # 위도 
+    longitude = Column(Float)      # 경도 
+
     embedding = Column(Vector(512)) 
 
     def __repr__(self):

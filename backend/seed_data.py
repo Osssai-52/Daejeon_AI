@@ -41,6 +41,8 @@ def seed_places():
         {
             "name": "성심당 본점",
             "addr": "대전 중구 대종로480번길 15",
+            "lat": 36.327666,
+            "lng": 127.427346,
             "contents": [
                 {"img": "01sungsim1.jpeg", "desc": "튀김소보로와 명란바게트의 성지! 대전 필수 코스"},
                 {"img": "01sungsim2.jpg",  "desc": "딸기시루 & 망고시루가 유명한 디저트 천국"},
@@ -53,6 +55,8 @@ def seed_places():
         {
             "name": "성심당 DCC점",
             "addr": "대전 유성구 엑스포로 107 1층",
+            "lat": 36.375248,
+            "lng": 127.392525,
             "contents": [
                 {"img": "01sungsim1.jpeg", "desc": "튀김소보로와 명란바게트의 성지! 대전 필수 코스"},
                 {"img": "01sungsim2.jpg",  "desc": "딸기시루 & 망고시루가 유명한 디저트 천국"},
@@ -65,6 +69,8 @@ def seed_places():
         {
             "name": "성심당 대전역점",
             "addr": "대전 동구 중앙로 215 2층",
+            "lat": 36.332512,
+            "lng": 127.434199,
             "contents": [
                 {"img": "01sungsim1.jpeg", "desc": "튀김소보로와 명란바게트의 성지! 대전 필수 코스"},
                 {"img": "01sungsim2.jpg",  "desc": "딸기시루 & 망고시루가 유명한 디저트 천국"},
@@ -77,6 +83,8 @@ def seed_places():
         {
             "name": "성심당 롯데백화점 대전점",
             "addr": "대전 서구 계룡로 598 1층",
+            "lat": 36.340365,
+            "lng": 127.390176,
             "contents": [
                 {"img": "01sungsim1.jpeg", "desc": "마치 유럽 거리에 온 듯한 붉은 벽돌 건물! 🧱 성심당 케익부띠끄 앞에서 인생샷 찰칵 📸"},
                 {"img": "01sungsim2.jpg",  "desc": "비주얼 쇼크! 딸기가 산처럼 쌓인 전설의 딸기시루 케이크 🍓 (기념일 필수템)"},
@@ -90,6 +98,8 @@ def seed_places():
         {
             "name": "대전 엑스포 과학공원",
             "addr": "대전 유성구 대덕대로 480",
+            "lat": 36.376483,
+            "lng": 127.384852,
             "contents": [
                 {"img": "02expo1.png", "desc": "대전의 상징 한빛탑! 파란 하늘 아래 우뚝 솟은 미래 도시 느낌의 랜드마크 🚀"},
                 {"img": "02expo2.jpeg", "desc": "대전 야경 원탑! 빨강 파랑 아치가 빛나는 엑스포 다리 (견우직녀교) 🌉 데이트 코스로 강추!"},
@@ -100,6 +110,8 @@ def seed_places():
         {
             "name": "대전 엑스포 아쿠아리움",
             "addr": "대전 유성구 엑스포로 1 대전신세계 아트앤사이언스 지하1층",
+            "lat": 36.375155,
+            "lng": 127.381457,
             "contents": [
                 {"img": "02expo3.jpeg", "desc": "인생샷 보장! 머리 위로 물고기가 지나가는 몽환적인 해저 터널 📸"},
                 {"img": "02expo4.jpeg", "desc": "신비로운 바닷속 세상! 파란 물멍 때리기 좋은 도심 속 힐링 스팟 🐋"},
@@ -110,6 +122,8 @@ def seed_places():
         {
             "name": "신세계 아트앤사이언스",
             "addr": "대전 유성구 엑스포로 1",
+            "lat": 36.375155,
+            "lng": 127.381457,
             "contents": [
                 {"img": "03shinsegae1.jpeg", "desc": "럭셔리한 분위기 끝판왕! 맛집 탐방과 쇼핑을 한 번에 해결하는 실내 데이트 필수 코스 🛍️"},
                 {"img": "03shinsegae2.jpeg", "desc": "대전의 새로운 랜드마크! 쇼핑과 예술, 과학이 만난 복합 문화 공간의 웅장한 외관 🏢"},
@@ -119,6 +133,8 @@ def seed_places():
         {
             "name": "식장산 전망대",
             "addr": "대전 동구 세천공원로 32-836",
+            "lat": 36.303988,
+            "lng": 127.479953,
             "contents": [
                 {"img": "04sikjang1.jpeg", "desc": "보석을 뿌려놓은 듯한 황홀한 도시 야경 🌃 대전 시내가 한눈에 들어오는 최고의 드라이브 코스"},
                 {"img": "04sikjang2.jpeg", "desc": "탁 트인 하늘과 멋진 한옥 정자(식장루) 🏯 가슴이 뻥 뚫리는 시원한 마운틴 뷰와 고즈넉한 분위기"},
@@ -129,6 +145,8 @@ def seed_places():
         {
             "name": "한밭수목원",
             "addr": "대전 서구 둔산대로 169",
+            "lat": 36.366782,
+            "lng": 127.389278,
             "contents": [
                 {"img": "05hanbat_arboretum1.jpeg", "desc": "도심 속 힐링 타임! 🌿 시원한 분수와 정자가 있는 평화로운 호수 풍경 (피크닉 매트 펴고 눕고 싶다)"},
                 {"img": "05hanbat_arboretum2.jpeg", "desc": "장미꽃이 만발한 로맨틱한 꽃 터널! 🌹 막 찍어도 인생샷 나오는 예쁜 정원 (꽃구경 데이트는 여기로)"},
@@ -137,6 +155,8 @@ def seed_places():
         {
             "name": "장태산 자연휴양림",
             "addr": "대전 서구 장안로 461",
+            "lat": 36.218206,
+            "lng": 127.344265,
             "contents": [
                 {"img": "06jangtaesan1.jpg", "desc": "빙글빙글 올라가는 재미가 있는 스카이타워! 🗼 꼭대기에서 내려다보는 숲 뷰가 진짜 가슴 뻥 뚫림 (고소공포증 주의)"},
                 {"img": "06jangtaesan2.jpg", "desc": "호수 위에 비친 붉은 메타세콰이어 숲이 한 폭의 그림 같은 곳! 🍂 바라만 봐도 힐링되는 가을 인생샷 명소"},
@@ -236,6 +256,8 @@ def seed_places():
     for place in grouped_places:
         common_name = place["name"]
         common_addr = place["addr"]
+        common_lat = place["lat"]
+        common_lng = place["lng"]
         
         # 두 번째 루프: 그 장소 안의 사진들 꺼내기
         for item in place["contents"]:
@@ -264,6 +286,8 @@ def seed_places():
                     new_place = Place(
                         name=common_name,       # 공통 이름
                         address=common_addr,    # 공통 주소
+                        latitude=common_lat,    # 위도 (추가됨!)
+                        longitude=common_lng,   # 경도 (추가됨!)
                         description=description, # 개별 설명
                         image_path=image_file,   # 개별 사진
                         embedding=vector
