@@ -1,5 +1,7 @@
 import os
 import sys
+import uuid 
+import boto3 
 from dotenv import load_dotenv
 
 sys.path.append(os.getcwd())
@@ -9,14 +11,33 @@ from sqlalchemy.orm import sessionmaker
 from app.db.models import Base, Place
 from app.services.ai_service import ai_instance
 
+# 1. 환경변수 로딩
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
+AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-2")
 
 if not DATABASE_URL:
     print("❌ 에러: .env 파일을 못 찾거나, 안에 DATABASE_URL이 없어!")
     sys.exit(1)
 
+# 2. S3 클라이언트 연결
+try:
+    s3_client = boto3.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
+    )
+    print("✅ S3 클라이언트 연결 성공!")
+except Exception as e:
+    print(f"❌ S3 연결 실패: {e}")
+    sys.exit(1)
+
+# 3. DB 연결
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 
@@ -29,15 +50,38 @@ def init_db():
         conn.commit()
     Base.metadata.create_all(bind=engine)
 
+# [핵심] 로컬 파일을 S3에 올리고 URL을 받아오는 함수
+def upload_file_to_s3(local_file_path, original_filename):
+    try:
+        file_ext = original_filename.split(".")[-1]
+        unique_filename = f"{uuid.uuid4()}.{file_ext}" # 이름 겹치지 않게 랜덤 생성
+        
+        with open(local_file_path, "rb") as f:
+            file_content = f.read()
+            
+            # S3 업로드
+            s3_client.put_object(
+                Bucket=AWS_BUCKET_NAME,
+                Key=unique_filename,
+                Body=file_content,
+                ContentType=f"image/{file_ext}"
+            )
+            
+        # 접근 가능한 URL 반환
+        return f"https://{AWS_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/{unique_filename}"
+    except Exception as e:
+        print(f"❌ S3 업로드 실패 ({original_filename}): {e}")
+        return None
+
 def seed_places():
     db = SessionLocal()
     
-    # 1. DB에 이미 있는 사진 목록 확인 (중복 방지)
+    # 중복 방지를 위해 이미 저장된 장소 이름 확인
     print("📋 기존 데이터 확인 중...")
-    existing_images = set(db.scalars(select(Place.image_path)).all())
+    existing_places = set(db.scalars(select(Place.name)).all())
     
     grouped_places = [
-        # 1-0. 성심당 본점 
+        # 1. 성심당 시리즈
         {
             "name": "성심당 본점",
             "addr": "대전 중구 대종로480번길 15",
@@ -51,7 +95,6 @@ def seed_places():
                 {"img": "01sungsim5.jpg",  "desc": "성심당"},
             ]
         },
-        # 1-1. 성심당 DCC점
         {
             "name": "성심당 DCC점",
             "addr": "대전 유성구 엑스포로 107 1층",
@@ -60,12 +103,8 @@ def seed_places():
             "contents": [
                 {"img": "01sungsim1.jpeg", "desc": "튀김소보로와 명란바게트의 성지! 대전 필수 코스"},
                 {"img": "01sungsim2.jpg",  "desc": "딸기시루 & 망고시루가 유명한 디저트 천국"},
-                {"img": "01sungsim3.jpeg", "desc": "튀김소보로도 유명한 빵집"},
-                {"img": "01sungsim4.jpeg", "desc": "보문산메아리와 명란바게트가 유명한 빵집"},
-                {"img": "01sungsim5.jpg",  "desc": "성심당"},
             ]
         },
-        # 1-2. 성심당 대전역점
         {
             "name": "성심당 대전역점",
             "addr": "대전 동구 중앙로 215 2층",
@@ -73,38 +112,31 @@ def seed_places():
             "lng": 127.434199,
             "contents": [
                 {"img": "01sungsim1.jpeg", "desc": "튀김소보로와 명란바게트의 성지! 대전 필수 코스"},
-                {"img": "01sungsim2.jpg",  "desc": "딸기시루 & 망고시루가 유명한 디저트 천국"},
                 {"img": "01sungsim3.jpeg", "desc": "튀김소보로도 유명한 빵집"},
-                {"img": "01sungsim4.jpeg", "desc": "보문산메아리와 명란바게트가 유명한 빵집"},
-                {"img": "01sungsim5.jpg",  "desc": "성심당"},
             ]
         },
-        # 1-3. 성심당 롯데백화점 대전점
         {
             "name": "성심당 롯데백화점 대전점",
             "addr": "대전 서구 계룡로 598 1층",
             "lat": 36.340365,
             "lng": 127.390176,
             "contents": [
-                {"img": "01sungsim1.jpeg", "desc": "마치 유럽 거리에 온 듯한 붉은 벽돌 건물! 🧱 성심당 케익부띠끄 앞에서 인생샷 찰칵 📸"},
-                {"img": "01sungsim2.jpg",  "desc": "비주얼 쇼크! 딸기가 산처럼 쌓인 전설의 딸기시루 케이크 🍓 (기념일 필수템)"},
-                {"img": "01sungsim3.jpeg", "desc": "입안에서 사르르 녹는 생망고 폭탄! 🍋 웨이팅해서라도 먹어야 하는 망고시루"},
-                {"img": "01sungsim4.jpeg", "desc": "겉바속촉의 정석! 고소한 버터 풍미와 짭짤함이 터지는 성심당 명물 소금빵 🥐"},
-                {"img": "01sungsim5.jpg",  "desc": "대전의 자존심! 바삭바삭한 식감이 일품인 전설의 튀김소보로 (우유랑 먹으면 극락!) 🍩"},
+                {"img": "01sungsim1.jpeg", "desc": "마치 유럽 거리에 온 듯한 붉은 벽돌 건물!"},
+                {"img": "01sungsim2.jpg",  "desc": "비주얼 쇼크! 전설의 딸기시루 케이크 🍓"},
             ]
         },
 
-        # 2. 엑스포 & 야경 맛집
+        # 2. 엑스포 & 야경
         {
             "name": "대전 엑스포 과학공원",
             "addr": "대전 유성구 대덕대로 480",
             "lat": 36.376483,
             "lng": 127.384852,
             "contents": [
-                {"img": "02expo1.png", "desc": "대전의 상징 한빛탑! 파란 하늘 아래 우뚝 솟은 미래 도시 느낌의 랜드마크 🚀"},
-                {"img": "02expo2.jpeg", "desc": "대전 야경 원탑! 빨강 파랑 아치가 빛나는 엑스포 다리 (견우직녀교) 🌉 데이트 코스로 강추!"},
-                {"img": "02expo7.jpeg", "desc": "밤에 더 핫한 한빛탑 물빛광장! 반짝이는 조명과 시원한 음악분수가 있는 힐링 스팟 ✨"},
-                {"img": "02expo8.jpeg", "desc": "꿈돌이와 꿈순이가 반겨주는 엑스포 광장! 알록달록 꽃밭과 거대한 조형물이 있는 산책 명소 🌷"},
+                {"img": "02expo1.png", "desc": "대전의 상징 한빛탑! 미래 도시 느낌의 랜드마크 🚀"},
+                {"img": "02expo2.jpeg", "desc": "대전 야경 원탑! 엑스포 다리 (견우직녀교) 🌉"},
+                {"img": "02expo7.jpeg", "desc": "밤에 더 핫한 한빛탑 물빛광장과 음악분수 ✨"},
+                {"img": "02expo8.jpeg", "desc": "꿈돌이와 꿈순이가 반겨주는 엑스포 광장 🌷"},
             ]
         },
         {
@@ -113,10 +145,8 @@ def seed_places():
             "lat": 36.375155,
             "lng": 127.381457,
             "contents": [
-                {"img": "02expo3.jpeg", "desc": "인생샷 보장! 머리 위로 물고기가 지나가는 몽환적인 해저 터널 📸"},
-                {"img": "02expo4.jpeg", "desc": "신비로운 바닷속 세상! 파란 물멍 때리기 좋은 도심 속 힐링 스팟 🐋"},
-                {"img": "02expo5.jpeg", "desc": "눈을 뗄 수 없는 수중 발레 공연과 마술쇼가 있는 곳 ✨"},
-                {"img": "02expo6.jpeg", "desc": "상어랑 아이컨택 가능! 아이들도 좋아하는 스릴 만점 수중 탐험 🦈"},
+                {"img": "02expo3.jpeg", "desc": "인생샷 보장! 몽환적인 해저 터널 📸"},
+                {"img": "02expo4.jpeg", "desc": "신비로운 바닷속 세상! 도심 속 힐링 스팟 🐋"},
             ]
         },
         {
@@ -125,9 +155,8 @@ def seed_places():
             "lat": 36.375155,
             "lng": 127.381457,
             "contents": [
-                {"img": "03shinsegae1.jpeg", "desc": "럭셔리한 분위기 끝판왕! 맛집 탐방과 쇼핑을 한 번에 해결하는 실내 데이트 필수 코스 🛍️"},
-                {"img": "03shinsegae2.jpeg", "desc": "대전의 새로운 랜드마크! 쇼핑과 예술, 과학이 만난 복합 문화 공간의 웅장한 외관 🏢"},
-                {"img": "03shinsegae3.jpeg", "desc": "갑천이 한눈에 내려다보이는 탁 트인 뷰! 노을 질 때 가장 예쁜 하늘공원 & 전망대 🌅"},
+                {"img": "03shinsegae1.jpeg", "desc": "럭셔리한 분위기 끝판왕! 실내 데이트 필수 코스 🛍️"},
+                {"img": "03shinsegae2.jpeg", "desc": "대전의 새로운 랜드마크! 🏢"},
             ]
         },
         {
@@ -136,8 +165,8 @@ def seed_places():
             "lat": 36.303988,
             "lng": 127.479953,
             "contents": [
-                {"img": "04sikjang1.jpeg", "desc": "보석을 뿌려놓은 듯한 황홀한 도시 야경 🌃 대전 시내가 한눈에 들어오는 최고의 드라이브 코스"},
-                {"img": "04sikjang2.jpeg", "desc": "탁 트인 하늘과 멋진 한옥 정자(식장루) 🏯 가슴이 뻥 뚫리는 시원한 마운틴 뷰와 고즈넉한 분위기"},
+                {"img": "04sikjang1.jpeg", "desc": "보석을 뿌려놓은 듯한 황홀한 도시 야경 🌃"},
+                {"img": "04sikjang2.jpeg", "desc": "탁 트인 하늘과 멋진 한옥 정자(식장루) 🏯"},
             ]
         },
 
@@ -148,8 +177,8 @@ def seed_places():
             "lat": 36.366782,
             "lng": 127.389278,
             "contents": [
-                {"img": "05hanbat_arboretum1.jpeg", "desc": "도심 속 힐링 타임! 🌿 시원한 분수와 정자가 있는 평화로운 호수 풍경 (피크닉 매트 펴고 눕고 싶다)"},
-                {"img": "05hanbat_arboretum2.jpeg", "desc": "장미꽃이 만발한 로맨틱한 꽃 터널! 🌹 막 찍어도 인생샷 나오는 예쁜 정원 (꽃구경 데이트는 여기로)"},
+                {"img": "05hanbat_arboretum1.jpeg", "desc": "도심 속 힐링 타임! 평화로운 호수 풍경 🌿"},
+                {"img": "05hanbat_arboretum2.jpeg", "desc": "장미꽃이 만발한 로맨틱한 꽃 터널! 🌹"},
             ]
         },
         {
@@ -158,13 +187,11 @@ def seed_places():
             "lat": 36.218206,
             "lng": 127.344265,
             "contents": [
-                {"img": "06jangtaesan1.jpg", "desc": "빙글빙글 올라가는 재미가 있는 스카이타워! 🗼 꼭대기에서 내려다보는 숲 뷰가 진짜 가슴 뻥 뚫림 (고소공포증 주의)"},
-                {"img": "06jangtaesan2.jpg", "desc": "호수 위에 비친 붉은 메타세콰이어 숲이 한 폭의 그림 같은 곳! 🍂 바라만 봐도 힐링되는 가을 인생샷 명소"},
-                {"img": "06jangtaesan3.jpg", "desc": "나무 꼭대기를 걷는 기분! ☁️ 아찔하고 스릴 넘치는 출렁다리 스카이웨이 (여기서 사진 찍으면 무조건 인생샷)"},
-                {"img": "06jangtaesan4.jpg", "desc": "피톤치드 풀충전 완료! 🌿 초록초록한 메타세콰이어 숲길과 평화로운 연못 산책 (힐링이 필요할 땐 무조건 여기)"},
+                {"img": "06jangtaesan1.jpg", "desc": "빙글빙글 올라가는 재미가 있는 스카이타워! 🗼"},
+                {"img": "06jangtaesan2.jpg", "desc": "호수 위에 비친 붉은 메타세콰이어 숲 🍂"},
+                {"img": "06jangtaesan3.jpg", "desc": "아찔하고 스릴 넘치는 출렁다리 스카이웨이 ☁️"},
             ]
         },
-
         # {
         #     "name": "계족산 황톳길",
         #     "desc": "맨발로 걷는 붉은 황톳길 트레킹",
@@ -252,57 +279,63 @@ def seed_places():
     print(f"🚀 '{IMAGE_FOLDER}' 폴더 스캔 및 학습 시작...")
     
     count = 0
-    # 첫 번째 루프: 장소별로 돌기
+    
     for place in grouped_places:
         common_name = place["name"]
+        
+        if common_name in existing_places:
+            print(f"⏩패스: {common_name} (이미 DB에 있음)")
+            continue
+
         common_addr = place["addr"]
         common_lat = place["lat"]
         common_lng = place["lng"]
         
-        # 두 번째 루프: 그 장소 안의 사진들 꺼내기
         for item in place["contents"]:
             image_file = item["img"]
             description = item["desc"]
 
-            # 중복 체크
-            if image_file in existing_images:
-                print(f"⏩ 패스: {image_file} (이미 아는 사진)")
-                continue
-
             file_path = os.path.join(IMAGE_FOLDER, image_file)
             
             if not os.path.exists(file_path):
-                print(f"❌ 파일 없음: {file_path}")
+                print(f"❌ 로컬 파일 없음: {file_path}")
                 continue
                 
             try:
-                print(f"📸 학습 중: {common_name} - {image_file}")
+                print(f"📸 처리 중: {common_name} - {image_file}")
+                
+                # 1. S3 업로드 (URL 받기)
+                s3_url = upload_file_to_s3(file_path, image_file)
+                if not s3_url: continue # 실패하면 다음 사진으로
+
+                # 2. 벡터 변환
                 with open(file_path, "rb") as f:
                     img_bytes = f.read()
-                    
-                vector = ai_instance.image_to_vector(img_bytes)
+                    vector = ai_instance.image_to_vector(img_bytes)
                 
+                # 3. DB 저장 (URL 저장!)
                 if vector:
                     new_place = Place(
-                        name=common_name,       # 공통 이름
-                        address=common_addr,    # 공통 주소
-                        latitude=common_lat,    # 위도 (추가됨!)
-                        longitude=common_lng,   # 경도 (추가됨!)
-                        description=description, # 개별 설명
-                        image_path=image_file,   # 개별 사진
+                        name=common_name,       
+                        address=common_addr,    
+                        latitude=common_lat,    
+                        longitude=common_lng,   
+                        description=description, 
+                        image_path=s3_url,   # 👈 여기가 핵심! URL이 들어감
                         embedding=vector
                     )
                     db.add(new_place)
                     count += 1
+                    print(f"  ✅ 저장 완료! (URL: {s3_url})")
                     
             except Exception as e:
                 print(f"⚠️ 에러: {e}")
     
     if count > 0:
         db.commit()
-        print(f"🎉 {count}장의 사진을 새로 학습했어!")
+        print(f"🎉 {count}장의 사진을 S3에 올리고 DB에 저장했어!")
     else:
-        print("💤 새로 학습할 게 없네!")
+        print("💤 새로 추가된 게 없네!")
         
     db.close()
 
