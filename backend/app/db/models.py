@@ -1,6 +1,5 @@
-# backend/app/db/models.py
-from sqlalchemy import Column, Integer, String, Float, Text
-from pgvector.sqlalchemy import Vector  # ★ 핵심: 벡터를 저장하는 타입
+from sqlalchemy import Column, Integer, String, Float, Text, BigInteger 
+from pgvector.sqlalchemy import Vector  
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -21,3 +20,14 @@ class Place(Base):
 
     def __repr__(self):
         return f"<Place(name={self.name})>"
+
+# [추가] 카카오 로그인 유저 모델
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    kakao_id = Column(BigInteger, unique=True, index=True) # 카카오 고유 ID (숫자가 커서 BigInteger)
+    nickname = Column(String) # 카카오 닉네임
+    profile_image = Column(String) # 프로필 사진 URL
+    email = Column(String, nullable=True) # 이메일 (선택사항이라 nullable=True)
+    created_at = Column(String) # 가입 시간
