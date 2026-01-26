@@ -1,12 +1,15 @@
 import os
+import uuid 
 from typing import List, Optional
 from datetime import datetime, timedelta
 from dotenv import load_dotenv   
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 import httpx 
 from jose import jwt 
+import boto3 
 
 from app.services.ai_service import ai_instance
 from app.services.recommend_service import recommend_service
@@ -25,8 +28,26 @@ KAKAO_REDIRECT_URI = os.getenv("KAKAO_REDIRECT_URI", "http://localhost:3000/oaut
 SECRET_KEY = os.getenv("SECRET_KEY", "secret_key_backup") 
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
+# [S3] AWS 환경변수 로딩
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
+AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-2") 
+
 if not DATABASE_URL:
-    print("❌ 에러: .env 파일을 못 찾거나 DATABASE_URL이 없어!")
+    print("❌ 에러: .env 파일을 못 찾거나 DATABASE_URL이 없음")
+
+# [S3] 클라이언트 연결 (서버 켜질 때 한 번만 연결)
+try:
+    s3_client = boto3.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
+    )
+    print("✅ S3 클라이언트 연결 성공!")
+except Exception as e:
+    print(f"❌ S3 연결 실패: {e}")
 
 app = FastAPI()
 
@@ -57,12 +78,39 @@ def get_db():
     finally:
         db.close()
 
+# [S3] 이미지 업로드 도우미 함수
+def upload_to_s3(file: UploadFile) -> str:
+    try:
+        # 1. 파일 내용 읽기
+        file_content = file.file.read()
+        
+        # 2. 고유한 파일명 만들기 (덮어쓰기 방지)
+        file_ext = file.filename.split(".")[-1]
+        unique_filename = f"{uuid.uuid4()}.{file_ext}"
+        
+        # 3. S3 버킷에 업로드
+        s3_client.put_object(
+            Bucket=AWS_BUCKET_NAME,
+            Key=unique_filename,
+            Body=file_content,
+            ContentType=file.content_type
+        )
+        
+        # 4. 접근 가능한 URL 생성 (Public Read 권한 필요)
+        image_url = f"https://{AWS_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/{unique_filename}"
+        return image_url
+
+    except Exception as e:
+        print(f"❌ S3 업로드 중 에러 발생: {e}")
+        raise HTTPException(status_code=500, detail="이미지 서버 업로드 실패")
+
+# 토큰 인증을 위한 스킴 정의
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/kakao")
+
 class KakaoAuthRequest(BaseModel):
     code: str 
 
-# ---------------------------------------------------------
 # 🔑 [로그인] 카카오 로그인 & 회원가입 API
-# ---------------------------------------------------------
 @app.post("/auth/kakao")
 async def kakao_login(auth_req: KakaoAuthRequest, db: Session = Depends(get_db)):
     print(f"👀 [확인] 서버 API 키: |{KAKAO_REST_API_KEY}|")
@@ -141,9 +189,7 @@ async def kakao_login(auth_req: KakaoAuthRequest, db: Session = Depends(get_db))
         }
     }
 
-# ---------------------------------------------------------
-# 🍞 [기능 1~3] 취향 분석 및 맞춤 추천
-# ---------------------------------------------------------
+# 🍞 취향 분석 및 맞춤 추천
 @app.get("/")
 def read_root():
     return {"message": "🍞 대전 유잼 탐지기 서버 정상 가동 중! 🍞"}
@@ -157,7 +203,6 @@ async def analyze_image(
 ):
     print(f"📸 분석 시작... (사진 {len(files)}장)")
     
-    # 로직을 서비스 계층으로 위임 (Code Refactoring)
     sorted_recommendations = await recommend_service.get_recommendations(
         db, files, current_lat, current_lng
     )
@@ -171,9 +216,7 @@ async def analyze_image(
         "data": sorted_recommendations 
     }
 
-# ---------------------------------------------------------
-# 🚩 [기능 5] 방문 인증 (나만의 지도 만들기)
-# ---------------------------------------------------------
+# 🚩 방문 인증 (나만의 지도 만들기 - S3 저장 적용!)
 @app.post("/visits")
 def verify_visit(
     user_id: int = Form(...),
@@ -185,36 +228,69 @@ def verify_visit(
 ):
     """
     사용자가 특정 장소 근처(500m)에 도착해서 사진을 찍으면 '방문 완료' 처리
+    S3에 이미지를 업로드하고 URL을 DB에 저장함.
     """
     # 1. 장소 정보 조회
     target_place = db.query(Place).filter(Place.id == place_id).first()
     if not target_place:
         raise HTTPException(status_code=404, detail="장소를 찾을 수 없습니다.")
 
-    # 2. 거리 검증 (GPS 조작 방지)
+    # 2. 거리 검증
     distance = calculate_distance(lat, lng, target_place.latitude, target_place.longitude)
     print(f"📍 현재 위치와 {target_place.name} 거리: {distance:.2f}km")
 
-    if distance > 0.5: # 500m 이내여야 인증 성공
+    if distance > 0.5: 
         return {
             "status": "fail", 
             "message": f"장소와 너무 멀어요! ({int(distance*1000)}m 거리)"
         }
 
-    # 3. 방문 기록 저장
-    # (실제 서비스에선 이미지를 S3에 올리고 그 URL을 저장해야 함. 여기선 파일명만 임시 저장)
+    # 3. [수정됨] S3에 이미지 업로드
+    print("🚀 S3 업로드 시작...")
+    uploaded_image_url = upload_to_s3(file)
+    print(f"✅ S3 업로드 완료: {uploaded_image_url}")
+
+    # 4. 방문 기록 저장 (URL 저장)
     new_visit = Visit(
         user_id=user_id, 
         place_id=place_id, 
-        visit_image=file.filename # 임시
+        visit_image=uploaded_image_url
     )
     db.add(new_visit)
     db.commit()
     
     return {
         "status": "success", 
-        "message": f"🚩 {target_place.name} 방문 인증 완료! 나만의 지도에 기록되었습니다."
+        "message": f"🚩 {target_place.name} 방문 인증 완료! 나만의 지도에 기록되었습니다.",
+        "image_url": uploaded_image_url
     }
+
+# 🗺️ 나만의 지도 조회 (GET)
+@app.get("/my-map")
+def get_my_visits(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    # 1. 토큰에서 사용자 ID 확인
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+    except Exception:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    # 2. 내 방문 기록 + 장소 정보 조회
+    results = db.query(Visit, Place).join(Place, Visit.place_id == Place.id).filter(Visit.user_id == user_id).all()
+    
+    # 3. 데이터 포맷팅
+    my_map_data = []
+    for visit, place in results:
+        my_map_data.append({
+            "visit_id": visit.id,
+            "place_name": place.name,
+            "latitude": place.latitude,
+            "longitude": place.longitude,
+            "visited_at": visit.visited_at,
+            "photo": visit.visit_image # S3 URL 반환
+        })
+        
+    return {"count": len(my_map_data), "visits": my_map_data}
 
 @app.get("/users")
 def get_all_users(db: Session = Depends(get_db)):
