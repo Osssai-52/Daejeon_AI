@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Text, BigInteger, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, Text, BigInteger, ForeignKey, DateTime, UniqueConstraint
 from pgvector.sqlalchemy import Vector  
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
@@ -47,4 +47,45 @@ class Visit(Base):
     
     # 관계 설정
     user = relationship("User", back_populates="visits")
+    place = relationship("Place")
+
+class Route(Base):
+    __tablename__ = "routes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    start_lat = Column(Float)
+    start_lng = Column(Float)
+    created_at = Column(DateTime, default=datetime.now)
+
+    user = relationship("User")
+    places = relationship("RoutePlace", back_populates="route", order_by="RoutePlace.order_index")
+
+class RoutePlace(Base):
+    __tablename__ = "route_places"
+
+    id = Column(Integer, primary_key=True, index=True)
+    route_id = Column(Integer, ForeignKey("routes.id"))
+    order_index = Column(Integer)
+    place_id = Column(Integer, nullable=True)
+    name = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    image_url = Column(String, nullable=True)
+    lat = Column(Float)
+    lng = Column(Float)
+
+    route = relationship("Route", back_populates="places")
+
+class PlacePhoto(Base):
+    __tablename__ = "place_photos"
+    __table_args__ = (UniqueConstraint("user_id", "place_id", name="uq_place_photos_user_place"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    place_id = Column(Integer, ForeignKey("places.id"))
+    image_url = Column(String)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now)
+
+    user = relationship("User")
     place = relationship("Place")

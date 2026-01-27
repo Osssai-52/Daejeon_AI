@@ -13,7 +13,7 @@ import boto3
 
 from app.services.ai_service import ai_instance
 from app.services.recommend_service import recommend_service
-from app.db.models import Place, User, Visit, Base
+from app.db.models import Place, User, Visit, Route, RoutePlace, PlacePhoto, Base
 from app.utils import calculate_distance, sort_by_shortest_path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -53,9 +53,8 @@ app = FastAPI()
 
 # 2. CORS 설정
 origins = [
-    "http://localhost:8000",
-    "http://127.0.0.1:5500", 
-    "*"
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
 ]
 
 app.add_middleware(
@@ -120,7 +119,7 @@ class KakaoAuthResponse(BaseModel):
     token: str
     user: KakaoUserInfo
 
-class RoutePlace(BaseModel):
+class RoutePlaceSchema(BaseModel):
     id: Optional[int] = None
     name: Optional[str] = None
     lat: float
@@ -129,12 +128,43 @@ class RoutePlace(BaseModel):
 class RouteRequest(BaseModel):
     start_lat: float
     start_lng: float
-    places: List[RoutePlace]
+    places: List[RoutePlaceSchema]
 
 class RouteResponse(BaseModel):
     status: str
     start_point: dict
     data: list
+
+class RoutePlacePayload(BaseModel):
+    id: Optional[int] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    lat: float
+    lng: float
+
+class RouteHistoryCreateRequest(BaseModel):
+    start_lat: float
+    start_lng: float
+    places: List[RoutePlacePayload]
+
+class RouteHistoryListResponse(BaseModel):
+    status: str
+    routes: list
+
+class PlacePhotoResponse(BaseModel):
+    status: str
+    place_id: int
+    image_url: Optional[str] = None
+
+class PlacePhotoListItem(BaseModel):
+    place_id: int
+    image_url: str
+    updated_at: datetime
+
+class PlacePhotoListResponse(BaseModel):
+    status: str
+    photos: list
 
 # 🔑 [로그인] 카카오 로그인 & 회원가입 API
 @app.post(
@@ -275,6 +305,107 @@ def calculate_route(req: RouteRequest):
         "data": sorted_places,
     }
 
+@app.post("/routes")
+def create_route_history(
+    req: RouteHistoryCreateRequest,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+    except Exception:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    if not req.places:
+        return {"status": "fail", "message": "places가 비어 있습니다."}
+
+    new_route = Route(
+        user_id=user_id,
+        start_lat=req.start_lat,
+        start_lng=req.start_lng
+    )
+    db.add(new_route)
+    db.commit()
+    db.refresh(new_route)
+
+    route_places = []
+    for idx, p in enumerate(req.places):
+        route_places.append(RoutePlace(
+            route_id=new_route.id,
+            order_index=idx,
+            place_id=p.id,
+            name=p.name,
+            description=p.description,
+            image_url=p.image_url,
+            lat=p.lat,
+            lng=p.lng
+        ))
+    db.add_all(route_places)
+    db.commit()
+
+    return {
+        "status": "success",
+        "route_id": new_route.id
+    }
+
+@app.get("/routes", response_model=RouteHistoryListResponse)
+def get_route_history(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+    except Exception:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    routes = db.query(Route).filter(Route.user_id == user_id).order_by(Route.created_at.desc()).all()
+    result = []
+    for route in routes:
+        places_payload = []
+        for p in route.places:
+            places_payload.append({
+                "id": p.place_id,
+                "name": p.name,
+                "description": p.description,
+                "image_url": p.image_url,
+                "lat": p.lat,
+                "lng": p.lng,
+                "order_index": p.order_index
+            })
+
+        result.append({
+            "route_id": route.id,
+            "created_at": route.created_at,
+            "start_point": {"lat": route.start_lat, "lng": route.start_lng},
+            "places": places_payload
+        })
+
+    return {"status": "success", "routes": result}
+
+@app.delete("/routes/{route_id}")
+def delete_route_history(
+    route_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+    except Exception:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    route = db.query(Route).filter(Route.id == route_id, Route.user_id == user_id).first()
+    if not route:
+        raise HTTPException(status_code=404, detail="경로를 찾을 수 없습니다.")
+
+    db.query(RoutePlace).filter(RoutePlace.route_id == route_id).delete()
+    db.delete(route)
+    db.commit()
+
+    return {"status": "success", "deleted_route_id": route_id}
+
 @app.post("/analyze")
 async def analyze_image(
     files: List[UploadFile] = File(...),
@@ -345,6 +476,98 @@ def verify_visit(
         "message": f"🚩 {target_place.name} 방문 인증 완료! 나만의 지도에 기록되었습니다.",
         "image_url": uploaded_image_url
     }
+
+@app.post("/places/{place_id}/photo", response_model=PlacePhotoResponse)
+def upload_place_photo(
+    place_id: int,
+    file: UploadFile = File(...),
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    """
+    거리 제한 없이, 특정 장소에 대해 사용자 1장 사진 업로드 (유저-장소 1장 유지).
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+    except Exception:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    place = db.query(Place).filter(Place.id == place_id).first()
+    if not place:
+        raise HTTPException(status_code=404, detail="장소를 찾을 수 없습니다.")
+
+    uploaded_image_url = upload_to_s3(file)
+
+    photo = db.query(PlacePhoto).filter(
+        PlacePhoto.user_id == user_id,
+        PlacePhoto.place_id == place_id
+    ).first()
+
+    if photo:
+        photo.image_url = uploaded_image_url
+    else:
+        photo = PlacePhoto(
+            user_id=user_id,
+            place_id=place_id,
+            image_url=uploaded_image_url
+        )
+        db.add(photo)
+
+    db.commit()
+
+    return {"status": "success", "place_id": place_id, "image_url": uploaded_image_url}
+
+@app.get("/places/{place_id}/photo", response_model=PlacePhotoResponse)
+def get_place_photo(
+    place_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    """
+    특정 장소에 대해 내가 올린 사진 1장을 조회.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+    except Exception:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    photo = db.query(PlacePhoto).filter(
+        PlacePhoto.user_id == user_id,
+        PlacePhoto.place_id == place_id
+    ).first()
+
+    if not photo:
+        return {"status": "success", "place_id": place_id, "image_url": None}
+
+    return {"status": "success", "place_id": place_id, "image_url": photo.image_url}
+
+@app.get("/places/photos", response_model=PlacePhotoListResponse)
+def get_place_photos(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    """
+    내가 올린 장소 사진들을 한 번에 조회 (place_id -> image_url 맵핑용).
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+    except Exception:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    photos = db.query(PlacePhoto).filter(PlacePhoto.user_id == user_id).all()
+    payload = [
+        {
+            "place_id": p.place_id,
+            "image_url": p.image_url,
+            "updated_at": p.updated_at
+        }
+        for p in photos
+    ]
+
+    return {"status": "success", "photos": payload}
 
 # 🗺️ 나만의 지도 조회 (GET)
 @app.get("/my-map")
