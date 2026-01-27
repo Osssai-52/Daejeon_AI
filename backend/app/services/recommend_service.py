@@ -33,11 +33,18 @@ class RecommendService:
         inputs = processor(text=prompts, return_tensors="pt", padding=True)
         
         # 4. 이미지 벡터(리스트)를 텐서로 변환
-        image_tensor = torch.tensor([image_vector]) # shape: [1, 512]
+        image_tensor = torch.tensor([image_vector], dtype=torch.float32) # shape: [1, 512]
 
         # 5. 유사도 계산 (이미지 vs 5가지 무드)
         with torch.no_grad():
-            text_features = model.get_text_features(**inputs) # 텍스트 특징 추출
+            text_outputs = model.get_text_features(**inputs) # 텍스트 특징 추출
+            # transformers 버전에 따라 텐서/모델출력 타입이 달라질 수 있음
+            if hasattr(text_outputs, "pooler_output"):
+                text_features = text_outputs.pooler_output
+            elif isinstance(text_outputs, (tuple, list)):
+                text_features = text_outputs[0]
+            else:
+                text_features = text_outputs
             
             # 정규화 (Cosine Similarity 정확도를 위해 필수)
             image_features = image_tensor / image_tensor.norm(dim=-1, keepdim=True)
@@ -93,6 +100,7 @@ class RecommendService:
                         "name": place.name,
                         "description": place.description,
                         "address": place.address,   
+                        "image_url": place.image_path,
                         "lat": place.latitude,
                         "lng": place.longitude,
                         "similarity": float(distance),

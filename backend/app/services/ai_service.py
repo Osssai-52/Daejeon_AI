@@ -24,10 +24,17 @@ class AIService:
             # 3. 벡터 추출 (특징 뽑아내기)
             with torch.no_grad():
                 outputs = self.model.get_image_features(**inputs)
-            
-            # 4. 결과를 파이썬 리스트로 변환 (DB에 저장하기 위해)
-            # 이 모델은 숫자 512개짜리 리스트를 만들어줍니다.
-            vector = outputs[0].tolist()
+
+            # 4. 결과 텐서 추출 (transformers 버전에 따라 타입이 다를 수 있음)
+            if hasattr(outputs, "pooler_output"):
+                image_features = outputs.pooler_output
+            elif isinstance(outputs, (tuple, list)):
+                image_features = outputs[0]
+            else:
+                image_features = outputs
+
+            # 이 모델은 숫자 512개짜리 벡터를 반환
+            vector = image_features[0].tolist()
             return vector
             
         except Exception as e:

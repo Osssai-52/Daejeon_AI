@@ -24,7 +24,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY") 
-KAKAO_REDIRECT_URI = os.getenv("KAKAO_REDIRECT_URI", "http://localhost:3000/oauth")
+KAKAO_REDIRECT_URI = os.getenv("KAKAO_REDIRECT_URI", "http://localhost:8080/oauth")
 SECRET_KEY = os.getenv("SECRET_KEY", "secret_key_backup") 
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
@@ -53,7 +53,7 @@ app = FastAPI()
 
 # 2. CORS 설정
 origins = [
-    "http://localhost:3000",
+    "http://localhost:8000",
     "http://127.0.0.1:5500", 
     "*"
 ]
@@ -110,8 +110,64 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/kakao")
 class KakaoAuthRequest(BaseModel):
     code: str 
 
+class KakaoUserInfo(BaseModel):
+    id: int
+    nickname: str
+    profile_image: str
+
+class KakaoAuthResponse(BaseModel):
+    status: str
+    token: str
+    user: KakaoUserInfo
+
+class RoutePlace(BaseModel):
+    id: Optional[int] = None
+    name: Optional[str] = None
+    lat: float
+    lng: float
+
+class RouteRequest(BaseModel):
+    start_lat: float
+    start_lng: float
+    places: List[RoutePlace]
+
+class RouteResponse(BaseModel):
+    status: str
+    start_point: dict
+    data: list
+
 # 🔑 [로그인] 카카오 로그인 & 회원가입 API
-@app.post("/auth/kakao")
+@app.post(
+    "/auth/kakao",
+    response_model=KakaoAuthResponse,
+    responses={
+        200: {
+            "description": "Kakao login success",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwgImV4cCI6MTczODAwMDAwMH0.signature",
+                        "user": {
+                            "id": 1,
+                            "nickname": "홍길동",
+                            "profile_image": "https://k.kakaocdn.net/dn/example_profile.jpg"
+                        }
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Bad Request",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "카카오 토큰 발급 실패"}
+                }
+            }
+        }
+    }
+)
+
 async def kakao_login(auth_req: KakaoAuthRequest, db: Session = Depends(get_db)):
     print(f"👀 [확인] 서버 API 키: |{KAKAO_REST_API_KEY}|")
     
@@ -193,6 +249,31 @@ async def kakao_login(auth_req: KakaoAuthRequest, db: Session = Depends(get_db))
 @app.get("/")
 def read_root():
     return {"message": "🍞 대전 유잼 탐지기 서버 정상 가동 중! 🍞"}
+
+@app.post("/route", response_model=RouteResponse)
+def calculate_route(req: RouteRequest):
+    """
+    장소 좌표 리스트를 받아 최적(가까운 순) 경로로 정렬해 반환.
+    """
+    if not req.places:
+        return {"status": "fail", "message": "places가 비어 있습니다."}
+
+    places_payload = [
+        {
+            "id": p.id,
+            "name": p.name,
+            "lat": p.lat,
+            "lng": p.lng,
+        }
+        for p in req.places
+    ]
+
+    sorted_places = sort_by_shortest_path(req.start_lat, req.start_lng, places_payload)
+    return {
+        "status": "success",
+        "start_point": {"lat": req.start_lat, "lng": req.start_lng},
+        "data": sorted_places,
+    }
 
 @app.post("/analyze")
 async def analyze_image(
