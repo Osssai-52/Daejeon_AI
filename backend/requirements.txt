@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pgvector
+boto3
+python-jose
+httpx
+python-multipart
+python-dotenv
+transformers
+torch
+pillow

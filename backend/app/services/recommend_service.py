@@ -37,16 +37,13 @@ class RecommendService:
 
         # 5. 유사도 계산 (이미지 vs 5가지 무드)
         with torch.no_grad():
-            text_outputs = model.get_text_features(**inputs) # 텍스트 특징 추출
-            # transformers 버전에 따라 텐서/모델출력 타입이 달라질 수 있음
-            if hasattr(text_outputs, "pooler_output"):
-                text_features = text_outputs.pooler_output
-            elif isinstance(text_outputs, (tuple, list)):
-                text_features = text_outputs[0]
-            else:
-                text_features = text_outputs
+            # 텍스트 특징 추출
+            text_outputs = model.get_text_features(**inputs) 
             
-            # 정규화 (Cosine Similarity 정확도를 위해 필수)
+            # 모델 버전에 따라 결과가 상자일 수도, 숫자일 수도 있어서 안전하게 처리
+            text_features = text_outputs.pooler_output if hasattr(text_outputs, 'pooler_output') else text_outputs
+
+            # 정규화 (이제 text_features가 숫자니까 .norm()이 잘 작동할 것)
             image_features = image_tensor / image_tensor.norm(dim=-1, keepdim=True)
             text_features = text_features / text_features.norm(dim=-1, keepdim=True)
             

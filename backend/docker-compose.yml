@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "80:8000"
+    depends_on:
+      - db
+    env_file:
+      - .env 
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/daejeondb 
+    restart: always
+
+  db:
+    image: ankane/pgvector  
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=daejeondb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+volumes:
+  postgres_data:
