@@ -14,7 +14,7 @@ import boto3
 from app.services.ai_service import ai_instance
 from app.services.recommend_service import recommend_service
 from app.db.models import Place, User, Visit, Base
-from app.utils import calculate_distance
+from app.utils import calculate_distance, sort_by_shortest_path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 import uvicorn
