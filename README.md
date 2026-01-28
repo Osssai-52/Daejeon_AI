@@ -52,14 +52,6 @@
 
 <br/>
 
-## Developers
-
-| [@kang022878](https://github.com/kang022878) | **Frontend & UI/UX Design** |
-|:---:|:---:|
-| [@Osssai-52](https://github.com/Osssai-52) | **Backend & AI Engineering** |
-
-<br/>
-
 ## Key Features
 
 ### 1. Mood-Based Place Recommendation
@@ -80,6 +72,13 @@
 **"그 장소에서의 순간을 영원히."**
 * 방문한 장소마다 직접 찍은 사진을 업로드하여 인증하고, 나만의 소중한 추억을 기록으로 남길 수 있습니다.
 
+<br/>
+
+## Developers
+
+| [@kang022878](https://github.com/kang022878) | **Frontend & UI/UX Design** |
+|:---:|:---:|
+| [@Osssai-52](https://github.com/Osssai-52) | **Backend & AI Engineering** |
 
 <br/>
 
