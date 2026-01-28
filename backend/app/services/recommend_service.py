@@ -92,6 +92,10 @@ class RecommendService:
                 if place.name in seen_names: continue
 
                 if distance < 0.45: # 유사도 기준
+                    # 장소의 무드가 업로드 이미지 무드와 다르면 제외
+                    place_mood = self.analyze_mood(place.embedding)
+                    if place_mood != detected_mood:
+                        continue
                     raw_candidates.append({
                         "id": place.id, 
                         "name": place.name,
@@ -101,7 +105,8 @@ class RecommendService:
                         "lat": place.latitude,
                         "lng": place.longitude,
                         "similarity": float(distance),
-                        "mood_tag": detected_mood # [결과에 추가] 분석된 무드 태그
+                        "mood_tag": detected_mood, # [결과에 추가] 분석된 무드 태그
+                        "place_mood": place_mood
                     })
                     seen_names.add(place.name)
 
