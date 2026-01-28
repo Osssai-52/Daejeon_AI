@@ -54,9 +54,61 @@
 
 ## Developers
 
-| Name | Role | GitHub |
-| :---: | :---: | :---: |
-| [@kang022878](https://github.com/kang022878) | **Frontend & UI/UX design** |
-| [@Osssai-52](https://github.com/Osssai-52) | **Backend & AI engineering** |
+| [@kang022878](https://github.com/kang022878) | **Frontend & UI/UX Design** |
+|:---:|:---:|
+| [@Osssai-52](https://github.com/Osssai-52) | **Backend & AI Engineering** |
 
 <br/>
+
+## Key Features
+
+
+<br/>
+
+## Getting Started
+
+이 프로젝트는 백엔드와 프론트엔드가 별도의 리포지토리로 구성되어 있습니다.
+전체 서비스를 실행하려면 아래 가이드를 따라 각각 설정해주세요.
+
+### Prerequisites
+* **Node.js** 18+
+* **Python** 3.11+
+* **PostgreSQL** (with `pgvector` extension)
+
+### 1. Backend Setup (Server)
+```bash
+# 1. Clone Backend Repository
+git clone https://github.com/Osssai-52/Daejeon_AI.git
+cd Daejeon_AI
+
+# 2. Virtual Environment Setup
+python -m venv venv
+
+# Mac/Linux:
+source venv/bin/activate
+# Windows:
+# venv\Scripts\activate
+
+# 3. Install Dependencies
+pip install -r requirements.txt
+
+# 4. Environment Variables (.env)
+# 프로젝트 루트에 .env 파일을 생성하고 DB URL 및 API 키를 설정하세요.
+# (DATABASE_URL, KAKAO_REST_API_KEY, SECRET_KEY, AWS_ACCESS_KEY_ID 등)
+
+# 5. Run Server
+uvicorn app.main:app --reload
+```
+
+### 2. Frontend Setup (Client)
+```bash
+# 1. Clone Frontend Repository
+git clone https://github.com/kang022878/Daejeon_front.git
+cd Daejeon_front
+
+# 2. Install Dependencies
+npm install
+
+# 3. Run Development Server
+npm run dev
+```
