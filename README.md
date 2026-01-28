@@ -1,18 +1,18 @@
-<div align="center">
-  <h1>Re: Daejeon</h1>
+<h1 align="left">Re: Daejeon</h1>
 
+<div align="center">
   <img src="./assets/banner_image.jpeg" alt="Re: Daejeon Banner" width="100%" />
 
   <p>
     <strong>"사진으로 당신의 무드를 읽고, AI가 대전을 꿈 속의 3D 우주 도시로 재구성해<br/>
     최적의 여행 경로와 순간들을 만들어주는 인터랙티브 경험 앱"</strong>
   </p>
-
-  <br/>
-
-  <h3>Frontend Repository</h3>
-  <a href="https://github.com/kang022878/Daejeon_front">https://github.com/kang022878/Daejeon_front</a>
 </div>
+
+<br/>
+
+## Frontend Repository
+[https://github.com/kang022878/Daejeon_front](https://github.com/kang022878/Daejeon_front)
 
 <br/>
 
